@@ -357,10 +357,17 @@ const P = {
   vx:0,vy:0,onGround:false,
   facing:1,frame:0,fTimer:0,
   invincible:0,blinkOn:true,
-  jumping:false
+  jumping:false,
+  coyote:0,
+  jumpBuf:0
 };
 
 const GRAVITY=0.42, MOVE_SPEED=3.2, JUMP_FORCE=-13.5;
+
+// --- Platformer feel upgrades (Dave-like) ---
+const COYOTE_FRAMES = 7;   // ~0.12s at 60fps
+const JUMPBUF_FRAMES = 6;  // ~0.10s at 60fps
+
 
 // =============================================================
 //  TITLE INIT
@@ -583,6 +590,15 @@ function update(){
   P.vy=Math.min(P.vy,18);
   P.x+=P.vx;
   P.y+=P.vy;
+
+  // --- Coyote Time + Jump Buffer (frame-based) ---
+  // Refresh coyote window if we were grounded in the previous frame,
+  // then decay both timers each frame.
+  if (P.onGround) P.coyote = COYOTE_FRAMES;
+  P.coyote = Math.max(0, P.coyote - 1);
+  P.jumpBuf = Math.max(0, P.jumpBuf - 1);
+
+  // Recompute grounded state this frame via collisions:
   P.onGround=false;
 
   // Platform collision
@@ -592,6 +608,7 @@ function update(){
       P.y=p.y-P.h;
       P.vy=0;
       P.onGround=true;
+      P.coyote = COYOTE_FRAMES; // landing refresh
     }
     // Head bump
     if(P.x+P.w>p.x+4 && P.x<p.x+p.w-4 &&
@@ -600,9 +617,27 @@ function update(){
     }
   }
 
-  // Reached goal zone (last 8% of world)
+  // Execute buffered jump if allowed (ground OR coyote window)
+  if (P.jumpBuf > 0 && (P.onGround || P.coyote > 0)) {
+    P.vy = JUMP_FORCE;
+    P.onGround = false;
+    P.coyote = 0;
+    P.jumpBuf = 0;
+    spawnParticles(P.x+P.w/2,P.y+P.h,'✨',3);
+  }
+
+  // Reached goal zone (last 8% of world) — require collecting the goal first
   if(!levelComplete && P.x > worldWidth * 0.92){
-    triggerLevelComplete();
+    if (collectCount >= lv.nCollect) {
+      triggerLevelComplete();
+    } else {
+      // Gentle reminder (rate-limited)
+      if(!update._needMsg || (Date.now() - update._needMsg) > 1200){
+        update._needMsg = Date.now();
+        const left = Math.max(0, lv.nCollect - collectCount);
+        spawnMsg(`اجمعي ${left} ${lv.collectEmoji} بعد!`);
+      }
+    }
   }
 
   // Fell off
@@ -733,8 +768,10 @@ function takeDamage(){
 }
 
 function doJump(){
-  if(P.onGround){ P.vy=JUMP_FORCE; P.onGround=false; spawnParticles(P.x+P.w/2,P.y+P.h,'✨',3); }
+  // Jump Buffer: store jump request for a few frames
+  P.jumpBuf = JUMPBUF_FRAMES;
 }
+
 
 function doShoot(){
   const lv=LEVELS[currentLevel];
