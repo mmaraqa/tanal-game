@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>مغامرات تنال 🌸</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Tajawal:wght@400;700;900&display=swap');
@@ -12,7 +12,7 @@
   --green:#58D68D; --yellow:#F4D03F; --orange:#E67E22;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:100vw;height:100vh;user-select:none;}
+body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:100vw;height:100vh;user-select:none;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;}
 
 /* SCREENS */
 .screen{position:absolute;inset:0;display:none;}
@@ -103,11 +103,12 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 #mobileControls{position:fixed;bottom:18px;left:0;right:0;display:flex;
   justify-content:space-between;padding:0 18px;z-index:500;pointer-events:none;}
 .ctrl-grp{display:flex;gap:10px;pointer-events:all;}
-.ctrl-btn{width:68px;height:68px;border-radius:50%;border:2px solid rgba(255,255,255,.3);
-  background:rgba(255,255,255,.12);backdrop-filter:blur(10px);font-size:1.6rem;cursor:pointer;
-  color:white;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .1s;}
-.ctrl-btn:active,.ctrl-btn.pressed{background:rgba(255,255,255,.38);}
-.ctrl-shoot{background:rgba(255,100,100,.2);border-color:rgba(255,100,100,.5);}
+.ctrl-btn{width:72px;height:72px;border-radius:50%;border:2px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.13);backdrop-filter:blur(8px);font-size:1.7rem;cursor:pointer;
+  color:white;touch-action:none;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;user-select:none;outline:none;transition:none;}
+.ctrl-btn.pressed{background:rgba(255,255,255,.45);transform:scale(.93);}
+.ctrl-shoot{background:rgba(255,100,100,.22);border-color:rgba(255,100,100,.55);}
 
 /* POPUPS */
 .score-pop{position:fixed;font-family:'Fredoka One',cursive;font-size:1.4rem;color:var(--yellow);
@@ -230,12 +231,12 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 <!-- MOBILE CONTROLS -->
 <div id="mobileControls" style="display:none">
   <div class="ctrl-grp">
-    <button class="ctrl-btn" id="btnL" ontouchstart="keys.left=true;this.classList.add('pressed')" ontouchend="keys.left=false;this.classList.remove('pressed')">◀</button>
-    <button class="ctrl-btn" id="btnR" ontouchstart="keys.right=true;this.classList.add('pressed')" ontouchend="keys.right=false;this.classList.remove('pressed')">▶</button>
+    <button class="ctrl-btn" id="btnL">◀</button>
+    <button class="ctrl-btn" id="btnR">▶</button>
   </div>
   <div class="ctrl-grp">
-    <button class="ctrl-btn ctrl-shoot" ontouchstart="doShoot()" onclick="doShoot()">🌸</button>
-    <button class="ctrl-btn" ontouchstart="doJump()" onclick="doJump()">⬆</button>
+    <button class="ctrl-btn ctrl-shoot" id="btnShoot">🌸</button>
+    <button class="ctrl-btn" id="btnJump">⬆</button>
   </div>
 </div>
 
@@ -347,7 +348,7 @@ let score=0, lives=3, currentLevel=0, animFrame=null;
 let platforms=[], collectibles=[], enemies=[], powerups=[], weapons_pick=[], bullets=[];
 let particles=[];
 let cameraX=0, worldWidth=0, levelComplete=false, collectCount=0;
-let transitionTimer=0, bgObjects=[];
+let bgObjects=[];
 let hasWeapon=false, weaponCount=0;
 
 // Player
@@ -459,8 +460,10 @@ function generateLevel(lv){
     platforms.push({x:gx+gap,y:gY,w:w,h:55,type:'ground'});
     gx+=gap+w;
   }
-  // Goal ground at end
-  platforms.push({x:worldWidth-260,y:gY,w:200,h:55,type:'goal'});
+  // Goal ground at end — accessible, with bridge ground before it
+  const goalX = worldWidth * 0.92;
+  platforms.push({x:goalX - 300, y:gY, w:350, h:55, type:'ground'}); // bridge ground before goal
+  platforms.push({x:goalX,       y:gY, w:400, h:55, type:'goal'});    // goal zone
 
   // === FLOATING PLATFORMS — generous spacing, reachable heights ===
   const maxJumpH=250; // how high player can jump
@@ -544,22 +547,19 @@ function generateLevel(lv){
 function gameLoop(){
   update();
   render();
-  animFrame=requestAnimationFrame(gameLoop);
+  if(!levelComplete) animFrame=requestAnimationFrame(gameLoop);
+}
+
+function celebrationLoop(){
+  render(); // keep drawing overlay + particles
+  animFrame=requestAnimationFrame(celebrationLoop);
 }
 
 // =============================================================
 //  UPDATE
 // =============================================================
 function update(){
-  if(levelComplete){
-    transitionTimer++;
-    if(transitionTimer>100){
-      currentLevel++;
-      if(currentLevel>=LEVELS.length) showWin();
-      else loadLevel(currentLevel);
-    }
-    return;
-  }
+  if(levelComplete) return;
 
   const lv=LEVELS[currentLevel];
 
@@ -592,13 +592,17 @@ function update(){
       P.y=p.y-P.h;
       P.vy=0;
       P.onGround=true;
-      if(p.type==='goal') triggerLevelComplete();
     }
     // Head bump
     if(P.x+P.w>p.x+4 && P.x<p.x+p.w-4 &&
        P.y>p.y+p.h-8 && P.y<p.y+p.h+8 && P.vy<0){
       P.vy=0;
     }
+  }
+
+  // Reached goal zone (last 8% of world)
+  if(!levelComplete && P.x > worldWidth * 0.92){
+    triggerLevelComplete();
   }
 
   // Fell off
@@ -749,10 +753,29 @@ function doShoot(){
 
 function triggerLevelComplete(){
   if(levelComplete) return;
-  levelComplete=true; transitionTimer=0;
+  levelComplete=true;
+  cancelAnimationFrame(animFrame);
+  animFrame=null;
   score+=collectCount*80;
-  for(let i=0;i<25;i++) setTimeout(()=>spawnParticles(Math.random()*canvas.width+cameraX,Math.random()*canvas.height*0.6,'🎉',4),i*120);
   updateHUD();
+  // Celebration particles
+  for(let i=0;i<20;i++){
+    setTimeout(()=>spawnParticles(
+      cameraX + Math.random()*canvas.width,
+      Math.random()*canvas.height*0.6,
+      ['🎉','⭐','🌸','💖','✨'][Math.floor(Math.random()*5)], 4
+    ), i*80);
+  }
+  // Run celebration render loop to show overlay + particles
+  celebrationLoop();
+  // Advance level after 2.5s
+  setTimeout(()=>{
+    cancelAnimationFrame(animFrame);
+    animFrame=null;
+    currentLevel++;
+    if(currentLevel>=LEVELS.length) showWin();
+    else loadLevel(currentLevel);
+  }, 2500);
 }
 
 function showWin(){
@@ -892,16 +915,55 @@ function render(){
 
   // Level complete overlay
   if(levelComplete){
-    const a=Math.min(1,transitionTimer/60);
-    ctx.fillStyle=`rgba(0,0,0,${a*.75})`;
+    ctx.fillStyle='rgba(0,0,0,0.72)';
     ctx.fillRect(0,0,W,H);
-    const sz=Math.min(W*.1,55);
+    // Animate particles
+    particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.life--; });
+    for(const p of particles){
+      if(p.life<=0) continue;
+      ctx.globalAlpha=p.life/p.maxLife;
+      ctx.font=`${p.sz}rem serif`; ctx.textAlign='center';
+      ctx.fillText(p.e,p.x,p.y);
+    }
+    ctx.globalAlpha=1;
+    const sz=Math.min(W*.09,52);
     ctx.font=`bold ${sz}px 'Fredoka One',cursive`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.shadowColor='#FF6B9D'; ctx.shadowBlur=30;
-    ctx.fillStyle=`rgba(255,215,0,${a})`;
-    ctx.fillText('🎉 أحسنتِ يا تنال! 🎉',W/2,H/2);
-    ctx.shadowBlur=0;
+    ctx.shadowColor='#FF6B9D'; ctx.shadowBlur=35;
+    ctx.fillStyle='#FFD700';
+    ctx.fillText('🎉 أحسنتِ يا تنال! 🎉',W/2,H/2-20);
+    ctx.font=`bold ${sz*0.55}px 'Fredoka One',cursive`;
+    ctx.fillStyle='white'; ctx.shadowBlur=0;
+    ctx.fillText('جاري الانتقال للمرحلة التالية...',W/2,H/2+50);
+  }
+
+  // Arrow indicator pointing to goal (when goal is off-screen to the right)
+  if(!levelComplete){
+    const goalX = worldWidth * 0.92;
+    const goalScreenX = goalX - cameraX;
+    if(goalScreenX > W - 20){
+      // Goal is off-screen to the right — draw pulsing arrow
+      const pulse = 0.6 + Math.sin(Date.now()*0.005)*0.4;
+      ctx.globalAlpha = pulse;
+      ctx.font = '2rem serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🏁 ➡️', W - 10, H/2);
+      ctx.globalAlpha = 1;
+      // Distance bar
+      const pct = Math.min(1, P.x / goalX);
+      ctx.fillStyle='rgba(0,0,0,.4)';
+      ctx.fillRect(W/2-100,8,200,10);
+      const barG=ctx.createLinearGradient(W/2-100,0,W/2+100,0);
+      barG.addColorStop(0,'#FF6B9D'); barG.addColorStop(1,'#FFD700');
+      ctx.fillStyle=barG;
+      ctx.fillRect(W/2-100,8,200*pct,10);
+      ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1;
+      ctx.strokeRect(W/2-100,8,200,10);
+      ctx.font='bold 11px Tajawal'; ctx.fillStyle='white';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('🏁 الهدف',W/2,28);
+    }
   }
 }
 
@@ -937,23 +999,47 @@ function drawPlatform(p,lv){
 
 function drawGoalFlag(goal){
   const gx=goal.x+goal.w*0.5, gy=goal.y;
+
+  // Goal zone glow on ground
+  const glowG=ctx.createLinearGradient(goal.x,gy-30,goal.x,gy+goal.h);
+  glowG.addColorStop(0,'rgba(255,215,0,0.25)');
+  glowG.addColorStop(1,'rgba(255,215,0,0)');
+  ctx.fillStyle=glowG;
+  ctx.fillRect(goal.x,gy-30,goal.w,goal.h+30);
+
+  // Animated stars above goal
+  const t=Date.now()*0.002;
+  for(let i=0;i<5;i++){
+    const sx=goal.x+goal.w*0.1+i*(goal.w*0.2);
+    const sy=gy-60+Math.sin(t+i)*15;
+    ctx.font='1.2rem serif'; ctx.textAlign='center';
+    ctx.globalAlpha=0.5+Math.sin(t+i)*0.5;
+    ctx.fillText('⭐',sx,sy);
+  }
+  ctx.globalAlpha=1;
+
   // Pole
   ctx.strokeStyle='#FFD700'; ctx.lineWidth=5;
-  ctx.shadowColor='#FFD700'; ctx.shadowBlur=10;
-  ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx,gy-100); ctx.stroke();
+  ctx.shadowColor='#FFD700'; ctx.shadowBlur=12;
+  ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(gx,gy-110); ctx.stroke();
   ctx.shadowBlur=0;
+
   // Flag wave
-  const wave=Math.sin(Date.now()*0.004)*6;
+  const wave=Math.sin(Date.now()*0.004)*7;
   ctx.fillStyle='#FF6B9D';
   ctx.beginPath();
-  ctx.moveTo(gx,gy-100);
-  ctx.quadraticCurveTo(gx+25+wave,gy-85,gx,gy-70);
+  ctx.moveTo(gx,gy-110);
+  ctx.quadraticCurveTo(gx+28+wave,gy-92,gx,gy-74);
   ctx.fill();
   ctx.font='1.1rem serif'; ctx.textAlign='center';
-  ctx.fillText('⭐',gx+12+wave/2,gy-85);
-  // Glow on goal platform
-  ctx.fillStyle='rgba(255,215,0,.1)';
-  ctx.fillRect(goal.x,goal.y-10,goal.w,goal.h+10);
+  ctx.fillText('⭐',gx+14+wave/2,gy-92);
+
+  // "الهدف" text above flag
+  ctx.font='bold 14px Tajawal'; ctx.fillStyle='#FFD700';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.shadowColor='rgba(0,0,0,.8)'; ctx.shadowBlur=4;
+  ctx.fillText('🏁 الهدف',gx,gy-118);
+  ctx.shadowBlur=0;
 }
 
 function drawPlayer(lv){
@@ -1121,8 +1207,10 @@ function spawnConfetti(){
 }
 
 // =============================================================
-//  INPUT
+//  INPUT — Pointer Events (zero delay, multi-touch, mouse+touch)
 // =============================================================
+
+// Keyboard
 document.addEventListener('keydown',e=>{
   if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=true;
   if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=true;
@@ -1133,6 +1221,30 @@ document.addEventListener('keyup',e=>{
   if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=false;
   if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=false;
 });
+
+// Prevent all default touch behavior on canvas and controls (no scroll, no zoom)
+document.addEventListener('touchstart', e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
+document.addEventListener('touchmove',  e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
+document.addEventListener('touchend',   e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
+
+// Helper: bind a button with pointerdown/pointerup/pointercancel/pointerleave
+function bindBtn(id, onDown, onUp){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('pointerdown', e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId); el.classList.add('pressed'); onDown(); }, {passive:false});
+  el.addEventListener('pointerup',   e=>{ e.preventDefault(); el.classList.remove('pressed'); if(onUp) onUp(); }, {passive:false});
+  el.addEventListener('pointercancel',e=>{ el.classList.remove('pressed'); if(onUp) onUp(); });
+  el.addEventListener('pointerleave', e=>{ el.classList.remove('pressed'); if(onUp) onUp(); });
+}
+
+// Wire up buttons after DOM ready
+function initControls(){
+  bindBtn('btnL',    ()=>{ keys.left=true; },  ()=>{ keys.left=false; });
+  bindBtn('btnR',    ()=>{ keys.right=true; }, ()=>{ keys.right=false; });
+  bindBtn('btnJump', ()=>{ doJump(); },  null);
+  bindBtn('btnShoot',()=>{ doShoot(); }, null);
+}
+initControls();
 
 window.addEventListener('resize',()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
 </script>
