@@ -34,7 +34,10 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 .start-btn{font-family:'Fredoka One',cursive;font-size:1.8rem;padding:15px 55px;
   background:linear-gradient(135deg,var(--pink),var(--purple));color:white;border:none;border-radius:50px;
   cursor:pointer;box-shadow:0 8px 0 #7d3c98,0 10px 20px rgba(0,0,0,.4);
-  animation:btnBounce 1.5s ease-in-out infinite;text-shadow:2px 2px 0 rgba(0,0,0,.3);}
+  animation:btnBounce 1.5s ease-in-out infinite;text-shadow:2px 2px 0 rgba(0,0,0,.3);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 @keyframes btnBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
 .start-btn:active{transform:translateY(4px);box-shadow:0 4px 0 #7d3c98;}
 .float-icon{position:absolute;animation:floatUp linear infinite;pointer-events:none;}
@@ -440,6 +443,15 @@ const JUMP_HOLD_BOOST  = 0.38; // قوة دفع إضافية للأعلى أثن
 //  GAME FLOW
 // =============================================================
 function startGame(){ score=0;lives=3;currentLevel=0;loadLevel(0); }
+// Mobile/iOS reliability: make Start button respond to pointer/touch explicitly
+window.addEventListener('load', () => {
+  const startBtn = document.querySelector('.start-btn');
+  if (!startBtn) return;
+
+  const handler = (e) => { e.preventDefault(); startGame(); };
+  startBtn.addEventListener('pointerup', handler, {passive:false});
+  startBtn.addEventListener('touchend',  handler, {passive:false});
+});
 function retryLevel(){ loadLevel(currentLevel); }
 function restartFromTitle(){
   cancelAnimationFrame(animFrame);
@@ -1321,10 +1333,22 @@ document.addEventListener('keyup',e=>{
   if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW') keys.jumpHeld=false;
 });
 
-// Prevent all default touch behavior on canvas and controls (no scroll, no zoom)
-document.addEventListener('touchstart', e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
-document.addEventListener('touchmove',  e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
-document.addEventListener('touchend',   e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
+// Prevent default touch behavior ONLY inside the game (canvas + mobile controls).
+// Do NOT block the Start button or title screen clicks.
+function preventTouchOnlyInGame(e){
+  const t = e.target;
+
+  // Never block the Start button
+  if (t && t.closest && t.closest('.start-btn')) return;
+
+  const inCanvas = (t === canvas);
+  const inControls = !!(t && t.closest && t.closest('#mobileControls'));
+
+  if ((inCanvas || inControls) && e.cancelable) e.preventDefault();
+}
+document.addEventListener('touchstart', preventTouchOnlyInGame, {passive:false});
+document.addEventListener('touchmove',  preventTouchOnlyInGame, {passive:false});
+document.addEventListener('touchend',   preventTouchOnlyInGame, {passive:false});
 
 // Helper: bind a button with pointerdown/pointerup/pointercancel/pointerleave
 function bindBtn(id, onDown, onUp){
