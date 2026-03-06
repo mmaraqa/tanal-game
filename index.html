@@ -316,6 +316,8 @@ const LEVELS = [
     speedMult:0.95,
     platformW:[100,180], platformGap:[190,340], platformH:[13,17],
     verticalSpread:0.58,
+    accel: 0.14,
+    friction: 0.92,
   },
   {
     name:'🍭 قصر الحلوى',
@@ -342,7 +344,7 @@ const LEVELS = [
 // =============================================================
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const keys = {left:false,right:false,up:false,shoot:false};
+const keys = {left:false,right:false,shoot:false,jumpHeld:false};
 
 let score=0, lives=3, currentLevel=0, animFrame=null;
 let platforms=[], collectibles=[], enemies=[], powerups=[], weapons_pick=[], bullets=[];
@@ -359,7 +361,8 @@ const P = {
   invincible:0,blinkOn:true,
   jumping:false,
   coyote:0,
-  jumpBuf:0
+  jumpBuf:0,
+  jumpHold:0
 };
 
 const GRAVITY=0.42, MOVE_SPEED=3.2, JUMP_FORCE=-13.5;
@@ -368,6 +371,9 @@ const GRAVITY=0.42, MOVE_SPEED=3.2, JUMP_FORCE=-13.5;
 const COYOTE_FRAMES = 7;   // ~0.12s at 60fps
 const JUMPBUF_FRAMES = 6;  // ~0.10s at 60fps
 
+// --- Variable jump height (hold = higher jump) ---
+const JUMP_HOLD_FRAMES = 10;   // عدد الفريمات التي يسمح فيها “الضغط المطول” برفع القفزة
+const JUMP_HOLD_BOOST  = 0.38; // قوة دفع إضافية للأعلى أثناء الضغط
 
 // =============================================================
 //  TITLE INIT
@@ -435,7 +441,7 @@ function loadLevel(idx){
 
   // Level intro
   document.getElementById('lvEmoji').textContent=lv.emoji;
-  document.getElementById('lvNum').textContent=`المرحلة ${idx+1} من 5`;
+  document.getElementById('lvNum').textContent=`المرحلة ${idx+1} من ${LEVELS.length}`;
   document.getElementById('lvTitle').textContent=lv.name;
   document.getElementById('lvStory').textContent=lv.story;
   document.getElementById('lvHint').textContent=lv.hint;
@@ -580,8 +586,10 @@ function update(){
 
   // Horizontal movement — smooth acceleration
   const targetVx = keys.left?-MOVE_SPEED:keys.right?MOVE_SPEED:0;
-  P.vx += (targetVx - P.vx) * 0.2;
-  if(Math.abs(P.vx)>.05 && targetVx===0) P.vx*=0.8;
+  const accel = (lv.accel ?? 0.2);
+  const friction = (lv.friction ?? 0.8);
+  P.vx += (targetVx - P.vx) * accel;
+  if(Math.abs(P.vx)>.05 && targetVx===0) P.vx*=friction;
   if(keys.left) P.facing=-1;
   if(keys.right) P.facing=1;
 
@@ -623,7 +631,16 @@ function update(){
     P.onGround = false;
     P.coyote = 0;
     P.jumpBuf = 0;
+    P.jumpHold = JUMP_HOLD_FRAMES; // ابدأ فترة “القفز المتدرج”
     spawnParticles(P.x+P.w/2,P.y+P.h,'✨',3);
+  }
+
+  // Variable jump height: طالما تضغط وأنت ما زلت تصعد، زد ارتفاع القفزة
+  if (keys.jumpHeld && P.jumpHold > 0 && P.vy < 0) {
+    P.vy -= JUMP_HOLD_BOOST;
+    P.jumpHold--;
+  } else if (!keys.jumpHeld) {
+    P.jumpHold = 0;
   }
 
   // Reached goal zone (last 8% of world) — require collecting the goal first
@@ -1228,7 +1245,7 @@ function updateHUD(){
     livesEl.appendChild(h);
   }
   document.getElementById('scoreEl').textContent=`⭐ ${score}`;
-  document.getElementById('levelEl').textContent=`المرحلة ${currentLevel+1}/5`;
+  document.getElementById('levelEl').textContent=`المرحلة ${currentLevel+1}/${LEVELS.length}`;
   document.getElementById('weaponEl').textContent=hasWeapon?`${lv.weaponEmoji} ×${weaponCount}`:`🌸 بدون سلاح`;
 }
 
@@ -1251,12 +1268,14 @@ function spawnConfetti(){
 document.addEventListener('keydown',e=>{
   if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=true;
   if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=true;
-  if((e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW')&&!e.repeat){ e.preventDefault(); doJump(); }
+  if((e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW')&&!e.repeat){ e.preventDefault(); keys.jumpHeld = true;
+      doJump(); }
   if((e.code==='KeyZ'||e.code==='KeyX'||e.code==='KeyF')&&!e.repeat) doShoot();
 });
 document.addEventListener('keyup',e=>{
   if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=false;
   if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=false;
+  if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW') keys.jumpHeld=false;
 });
 
 // Prevent all default touch behavior on canvas and controls (no scroll, no zoom)
@@ -1278,7 +1297,7 @@ function bindBtn(id, onDown, onUp){
 function initControls(){
   bindBtn('btnL',    ()=>{ keys.left=true; },  ()=>{ keys.left=false; });
   bindBtn('btnR',    ()=>{ keys.right=true; }, ()=>{ keys.right=false; });
-  bindBtn('btnJump', ()=>{ doJump(); },  null);
+  bindBtn('btnJump', ()=>{ keys.jumpHeld=true; doJump(); }, ()=>{ keys.jumpHeld=false; });
   bindBtn('btnShoot',()=>{ doShoot(); }, null);
 }
 initControls();
