@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>مغامرات تنال مرقه 🌸</title>
+<title>مغامرات تنال 🌸</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Tajawal:wght@400;700;900&display=swap');
 
@@ -31,21 +31,10 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 .title-sub{color:var(--yellow);font-size:clamp(.9rem,3vw,1.4rem);font-weight:900;margin-bottom:30px;text-shadow:2px 2px 0 rgba(0,0,0,.5);}
 .title-char{width:160px;height:200px;margin:0 auto 25px;animation:charFloat 3s ease-in-out infinite;}
 @keyframes charFloat{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-18px) rotate(2deg);}}
-.start-btn{
-  font-family:'Fredoka One',cursive;
-  font-size:1.8rem;
-  padding:15px 55px;
-  background:linear-gradient(135deg,var(--pink),var(--purple));
-  color:white;
-  border:none;
-  border-radius:50px;
-  cursor:pointer;
-  box-shadow:0 8px 0 #7d3c98,0 10px 20px rgba(0,0,0,.4);
-  animation:btnBounce 1.5s ease-in-out infinite;
-  text-shadow:2px 2px 0 rgba(0,0,0,.3);
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
+.start-btn{font-family:'Fredoka One',cursive;font-size:1.8rem;padding:15px 55px;
+  background:linear-gradient(135deg,var(--pink),var(--purple));color:white;border:none;border-radius:50px;
+  cursor:pointer;box-shadow:0 8px 0 #7d3c98,0 10px 20px rgba(0,0,0,.4);
+  animation:btnBounce 1.5s ease-in-out infinite;text-shadow:2px 2px 0 rgba(0,0,0,.3);}
 @keyframes btnBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
 .start-btn:active{transform:translateY(4px);box-shadow:0 4px 0 #7d3c98;}
 .float-icon{position:absolute;animation:floatUp linear infinite;pointer-events:none;}
@@ -121,6 +110,39 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 .ctrl-btn.pressed{background:rgba(255,255,255,.45);transform:scale(.93);}
 .ctrl-shoot{background:rgba(255,100,100,.22);border-color:rgba(255,100,100,.55);}
 
+/* JOYSTICK (analog stick like emulator) */
+.joy-wrap{pointer-events:all;display:flex;align-items:flex-end;justify-content:flex-end;}
+.joy-base{
+  width:132px;height:132px;border-radius:50%;
+  background:rgba(255,255,255,.10);
+  border:2px solid rgba(255,255,255,.28);
+  backdrop-filter:blur(10px);
+  position:relative;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:inset 0 0 0 6px rgba(0,0,0,.08);
+}
+.joy-base::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:46px;height:46px;border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.12);
+}
+.joy-knob{
+  width:56px;height:56px;border-radius:50%;
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(255,255,255,.32);
+  border:2px solid rgba(255,255,255,.40);
+  box-shadow:0 10px 22px rgba(0,0,0,.25);
+}
+.joy-knob.pressed{background:rgba(255,255,255,.45);transform:translate(-50%,-50%) scale(.96);}
+@media (max-width:420px){
+  .joy-base{width:120px;height:120px;}
+  .joy-knob{width:52px;height:52px;}
+}
+
+
 /* POPUPS */
 .score-pop{position:fixed;font-family:'Fredoka One',cursive;font-size:1.4rem;color:var(--yellow);
   text-shadow:2px 2px 0 rgba(0,0,0,.8);pointer-events:none;z-index:900;
@@ -191,7 +213,7 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
         <rect x="109" y="115" width="33" height="14" rx="7" fill="#5a7fa8"/>
       </svg>
     </div>
-    <div class="game-title">🌸 مغامرات تنال مرقه 🌸</div>
+    <div class="game-title">🌸 مغامرات تنال 🌸</div>
     <div class="title-sub">✨ خمس مغامرات رائعة تنتظرك! ✨</div>
     <button class="start-btn" onclick="startGame()">▶ ابدأ المغامرة</button>
   </div>
@@ -223,7 +245,7 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 <!-- WIN -->
 <div id="winScreen" class="screen">
   <div style="font-size:5rem;margin-bottom:10px;animation:charFloat 2s infinite">🏆</div>
-  <div class="win-title">🎊 بطلة المغامرات يا تنال مرقه! 🎊</div>
+  <div class="win-title">🎊 بطلة المغامرات يا تنال! 🎊</div>
   <div style="color:white;font-size:1.3rem">أكملتِ كل المراحل الخمس!</div>
   <div class="stars-row" id="finalStars">⭐⭐⭐</div>
   <div style="color:var(--yellow);font-family:'Fredoka One';font-size:1.8rem;margin:10px 0" id="finalScoreEl"></div>
@@ -241,13 +263,17 @@ body{font-family:'Tajawal',sans-serif;background:#0d0520;overflow:hidden;width:1
 
 <!-- MOBILE CONTROLS -->
 <div id="mobileControls" style="display:none">
-  <div class="ctrl-grp">
-    <button class="ctrl-btn" id="btnL">◀</button>
-    <button class="ctrl-btn" id="btnR">▶</button>
-  </div>
+  <!-- Action buttons (left side) -->
   <div class="ctrl-grp">
     <button class="ctrl-btn ctrl-shoot" id="btnShoot">🌸</button>
     <button class="ctrl-btn" id="btnJump">⬆</button>
+  </div>
+
+  <!-- Analog joystick (right side) -->
+  <div class="joy-wrap" aria-label="Joystick">
+    <div class="joy-base" id="joyBase" role="application" aria-label="Movement joystick">
+      <div class="joy-knob" id="joyKnob" aria-hidden="true"></div>
+    </div>
   </div>
 </div>
 
@@ -356,6 +382,8 @@ const LEVELS = [
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const keys = {left:false,right:false,shoot:false,jumpHeld:false};
+// Analog movement axis from joystick [-1..1]
+let moveAxis = 0;
 
 let score=0, lives=3, currentLevel=0, animFrame=null;
 let platforms=[], collectibles=[], enemies=[], powerups=[], weapons_pick=[], bullets=[];
@@ -412,12 +440,6 @@ const JUMP_HOLD_BOOST  = 0.38; // قوة دفع إضافية للأعلى أثن
 //  GAME FLOW
 // =============================================================
 function startGame(){ score=0;lives=3;currentLevel=0;loadLevel(0); }
-// Mobile/iOS reliability: make Start button respond to pointer/touch explicitly
-const startBtn = document.querySelector('.start-btn');
-if (startBtn){
-  startBtn.addEventListener('pointerup', (e)=>{ e.preventDefault(); startGame(); }, {passive:false});
-  startBtn.addEventListener('touchend',  (e)=>{ e.preventDefault(); startGame(); }, {passive:false});
-}
 function retryLevel(){ loadLevel(currentLevel); }
 function restartFromTitle(){
   cancelAnimationFrame(animFrame);
@@ -602,7 +624,11 @@ function update(){
   else P.blinkOn=true;
 
   // Horizontal movement — smooth acceleration
-  const targetVx = keys.left?-MOVE_SPEED:keys.right?MOVE_SPEED:0;
+  // Combine keyboard (left/right) and joystick (moveAxis)
+  let axis = moveAxis;
+  if (keys.left) axis = -1;
+  if (keys.right) axis = 1;
+  const targetVx = axis * MOVE_SPEED;
   const accel = (lv.accel ?? 0.2);
   const friction = (lv.friction ?? 0.8);
   P.vx += (targetVx - P.vx) * accel;
@@ -1296,20 +1322,9 @@ document.addEventListener('keyup',e=>{
 });
 
 // Prevent all default touch behavior on canvas and controls (no scroll, no zoom)
-// امنع السحب/الزوم فقط داخل اللعبة (canvas + أزرار التحكم) وليس على زر "ابدأ"
-function preventTouchOnlyInGame(e){
-  const t = e.target;
-  // Never block the Start button (or anything inside it)
-  if (t && t.closest && t.closest('.start-btn')) return;
-
-  const inCanvas = (t === canvas);
-  const inControls = !!t.closest && !!t.closest('#mobileControls');
-  if ((inCanvas || inControls) && e.cancelable) e.preventDefault();
-}
-
-document.addEventListener('touchstart', preventTouchOnlyInGame, {passive:false});
-document.addEventListener('touchmove',  preventTouchOnlyInGame, {passive:false});
-document.addEventListener('touchend',   preventTouchOnlyInGame, {passive:false});
+document.addEventListener('touchstart', e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
+document.addEventListener('touchmove',  e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
+document.addEventListener('touchend',   e=>{ if(e.cancelable) e.preventDefault(); }, {passive:false});
 
 // Helper: bind a button with pointerdown/pointerup/pointercancel/pointerleave
 function bindBtn(id, onDown, onUp){
@@ -1323,13 +1338,65 @@ function bindBtn(id, onDown, onUp){
 
 // Wire up buttons after DOM ready
 function initControls(){
-  bindBtn('btnL',    ()=>{ keys.left=true; },  ()=>{ keys.left=false; });
-  bindBtn('btnR',    ()=>{ keys.right=true; }, ()=>{ keys.right=false; });
   bindBtn('btnJump', ()=>{ keys.jumpHeld=true; doJump(); }, ()=>{ keys.jumpHeld=false; });
   bindBtn('btnShoot',()=>{ doShoot(); }, null);
 }
 initControls();
 
+// --- Analog joystick (movement) ---
+function initJoystick(){
+  const base = document.getElementById('joyBase');
+  const knob = document.getElementById('joyKnob');
+  if(!base || !knob) return;
+
+  let active = false;
+  let centerX = 0, centerY = 0;
+  const maxR = 40; // movement radius in px
+
+  function setKnob(dx, dy){
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+  function reset(){
+    active = false;
+    moveAxis = 0;
+    setKnob(0,0);
+    knob.classList.remove('pressed');
+    keys.left = false;
+    keys.right = false;
+  }
+
+  base.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    base.setPointerCapture(e.pointerId);
+    const r = base.getBoundingClientRect();
+    centerX = r.left + r.width/2;
+    centerY = r.top  + r.height/2;
+    active = true;
+    knob.classList.add('pressed');
+  }, {passive:false});
+
+  base.addEventListener('pointermove', (e)=>{
+    if(!active) return;
+    e.preventDefault();
+    const dx0 = e.clientX - centerX;
+    const dy0 = e.clientY - centerY;
+    const d = Math.hypot(dx0, dy0) || 1;
+    const clamped = Math.min(maxR, d);
+    const dx = dx0 / d * clamped;
+    const dy = dy0 / d * clamped;
+
+    setKnob(dx, dy);
+
+    // Horizontal axis only (platformer). Normalize to [-1..1]
+    moveAxis = Math.max(-1, Math.min(1, dx / maxR));
+    if (Math.abs(moveAxis) < 0.12) moveAxis = 0; // deadzone
+  }, {passive:false});
+
+  base.addEventListener('pointerup', (e)=>{ e.preventDefault(); reset(); }, {passive:false});
+  base.addEventListener('pointercancel', ()=> reset());
+  base.addEventListener('pointerleave', ()=> { if(active) reset(); });
+}
+initJoystick();
 window.addEventListener('resize',()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
 </script>
 </body>
