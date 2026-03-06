@@ -1377,12 +1377,18 @@ function initJoystick(){
   let centerX = 0, centerY = 0;
   const maxR = 40; // movement radius in px
 
+  // Joystick-up jump (one-hand mode) with latch to avoid accidental repeated jumps
+  let jumpLatch = false;
+  const JUMP_UP_THRESHOLD = 0.75;     // how far up to trigger jump
+  const JUMP_RESET_THRESHOLD = 0.45;  // how far back to reset latch
+
   function setKnob(dx, dy){
     knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
   }
   function reset(){
     active = false;
     moveAxis = 0;
+    jumpLatch = false;
     setKnob(0,0);
     knob.classList.remove('pressed');
     keys.left = false;
@@ -1414,11 +1420,27 @@ function initJoystick(){
     // Horizontal axis only (platformer). Normalize to [-1..1]
     moveAxis = Math.max(-1, Math.min(1, dx / maxR));
     if (Math.abs(moveAxis) < 0.12) moveAxis = 0; // deadzone
+
+    // Up axis for joystick jump (0..1). dy is negative when moving up.
+    const upAxis = Math.max(0, Math.min(1, (-dy) / maxR));
+
+    // Trigger a buffered jump once when pushing up past threshold
+    if (!jumpLatch && upAxis > JUMP_UP_THRESHOLD) {
+      keys.jumpHeld = true; // enables variable jump height while holding up
+      doJump();
+      jumpLatch = true;
+    }
+
+    // Release hold + allow next jump after returning closer to center
+    if (jumpLatch && upAxis < JUMP_RESET_THRESHOLD) {
+      jumpLatch = false;
+      keys.jumpHeld = false;
+    }
   }, {passive:false});
 
-  base.addEventListener('pointerup', (e)=>{ e.preventDefault(); reset(); }, {passive:false});
-  base.addEventListener('pointercancel', ()=> reset());
-  base.addEventListener('pointerleave', ()=> { if(active) reset(); });
+  base.addEventListener('pointerup', (e)=>{ e.preventDefault(); keys.jumpHeld = false; reset(); }, {passive:false});
+  base.addEventListener('pointercancel', ()=> { keys.jumpHeld = false; reset(); });
+  base.addEventListener('pointerleave', ()=> { if(active){ keys.jumpHeld = false; reset(); } });
 }
 initJoystick();
 window.addEventListener('resize',()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
